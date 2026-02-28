@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Graph Renderer</title>
+
+  <!-- 1. marked.js  — markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- 2. Chart.js   — renders canvas charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- 3. chartjs-chart-box  — adds box-plot type to Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot"></script>
+
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+    h1,h2,h3 { border-bottom: 1px solid #e2e2e2; padding-bottom: .3em; }
+    pre, code { background: #f6f6f6; border-radius: 4px; }
+    pre { padding: .8em 1em; overflow-x: auto; }
+    textarea { width: 100%; height: 320px; font-family: monospace; font-size: .9rem; border: 1px solid #ccc; border-radius: 4px; padding: .6em; box-sizing: border-box; }
+    button { margin-top: .6em; padding: .5em 1.4em; font-size: 1rem; cursor: pointer; background:#0070f3; color:#fff; border:none; border-radius:4px; }
+    button:hover { background: #0055cc; }
+    #output { margin-top: 2rem; }
+    .mgr-chart-wrapper { border: 1px solid #e8e8e8; border-radius: 6px; padding: 1rem; background: #fff; }
+    .mgr-error { color: #c00; background: #fff0f0; border: 1px solid #fcc; border-radius: 4px; padding: .6em 1em; }
+    #tabs { display:flex; gap:.5rem; margin-bottom:.8rem; }
+    #tabs button { background:#f0f0f0; color:#333; }
+    #tabs button.active { background:#0070f3; color:#fff; }
+  </style>
+</head>
+<body>
+
+<h1>Markdown Graph Renderer</h1>
+<p>Write markdown below. Use fenced code blocks with <code>chart:&lt;type&gt;</code> to embed charts.</p>
+
+<div id="tabs">
+  <button class="active" onclick="loadExample('line')">Line</button>
+  <button onclick="loadExample('bar')">Bar</button>
+  <button onclick="loadExample('pie')">Pie</button>
+  <button onclick="loadExample('hist')">Histogram</button>
+  <button onclick="loadExample('scatter')">Scatter</button>
+  <button onclick="loadExample('box')">Box Plot</button>
+</div>
+
+<textarea id="md-input"></textarea>
+<button onclick="render()">Render</button>
+
+<div id="output"></div>
+
+<!-- Our renderer hook -->
+<script src="renderer.js"></script>
+
+<script>
+// ── Wire up our renderer to marked ───────────────────────────────────────────
+setupMarked(marked);
+
+function render() {
+  const md = document.getElementById('md-input').value;
+  document.getElementById('output').innerHTML = marked.parse(md);
+}
+
+// ── Example snippets ─────────────────────────────────────────────────────────
+const EXAMPLES = {
+
+  line: `## Monthly Revenue (Line Chart)
+
+\`\`\`chart:line
+{
+  "title": "Monthly Revenue 2024",
+  "xLabel": "Month",
+  "yLabel": "Revenue ($k)",
+  "beginAtZero": true,
+  "data": {
+    "labels": ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    "datasets": [
+      {
+        "label": "Product A",
+        "data": [12, 19, 14, 22, 28, 35, 31, 40, 38, 45, 50, 58],
+        "borderColor": "#0070f3",
+        "backgroundColor": "rgba(0,112,243,0.1)",
+        "fill": true,
+        "tension": 0.3
+      },
+      {
+        "label": "Product B",
+        "data": [5, 8, 12, 9, 15, 20, 18, 25, 22, 30, 28, 34],
+        "borderColor": "#f5a623",
+        "backgroundColor": "rgba(245,166,35,0.1)",
+        "fill": true,
+        "tension": 0.3
+      }
+    ]
+  }
+}
+\`\`\``,
+
+  bar: `## Quarterly Sales (Bar Chart)
+
+\`\`\`chart:bar
+{
+  "title": "Quarterly Sales by Region",
+  "xLabel": "Quarter",
+  "yLabel": "Sales ($k)",
+  "beginAtZero": true,
+  "data": {
+    "labels": ["Q1","Q2","Q3","Q4"],
+    "datasets": [
+      { "label": "North", "data": [42, 55, 61, 78], "backgroundColor": "#0070f3" },
+      { "label": "South", "data": [30, 40, 35, 50], "backgroundColor": "#f5a623" },
+      { "label": "East",  "data": [20, 28, 33, 42], "backgroundColor": "#7c3aed" }
+    ]
+  }
+}
+\`\`\``,
+
+  pie: `## Market Share (Pie Chart)
+
+\`\`\`chart:pie
+{
+  "title": "Browser Market Share 2024",
+  "legendPosition": "right",
+  "data": {
+    "labels": ["Chrome","Safari","Firefox","Edge","Other"],
+    "datasets": [{
+      "data": [65, 18, 4, 5, 8],
+      "backgroundColor": ["#0070f3","#34aadc","#f5a623","#7c3aed","#aaa"]
+    }]
+  }
+}
+\`\`\``,
+
+  hist: `## Exam Score Distribution (Histogram)
+
+\`\`\`chart:hist
+{
+  "title": "Exam Score Distribution",
+  "xLabel": "Score range",
+  "yLabel": "# Students",
+  "bins": 8,
+  "values": [42,55,60,61,63,65,67,68,70,71,72,73,74,75,75,76,77,78,79,80,80,81,82,83,84,85,85,86,87,88,89,90,91,92,95,97,99,100,52,58]
+}
+\`\`\``,
+
+  scatter: `## Height vs Weight (Scatter)
+
+\`\`\`chart:scatter
+{
+  "title": "Height vs Weight",
+  "xLabel": "Height (cm)",
+  "yLabel": "Weight (kg)",
+  "data": {
+    "datasets": [{
+      "label": "Participants",
+      "data": [
+        {"x":155,"y":55},{"x":160,"y":62},{"x":165,"y":67},
+        {"x":170,"y":70},{"x":175,"y":75},{"x":180,"y":80},
+        {"x":185,"y":88},{"x":190,"y":93},{"x":162,"y":58},
+        {"x":172,"y":72},{"x":168,"y":65},{"x":178,"y":82}
+      ],
+      "backgroundColor": "rgba(0,112,243,0.6)"
+    }]
+  }
+}
+\`\`\``,
+
+  box: `## Test Score Box Plots by Class
+
+\`\`\`chart:box
+{
+  "title": "Score Distribution by Class",
+  "yLabel": "Score",
+  "data": {
+    "labels": ["Class A","Class B","Class C"],
+    "datasets": [{
+      "label": "Scores",
+      "backgroundColor": "rgba(0,112,243,0.5)",
+      "borderColor": "#0070f3",
+      "data": [
+        [55,60,65,70,72,74,76,78,80,85,90],
+        [40,50,60,65,68,70,72,74,76,78,80,82,88],
+        [70,72,74,76,78,80,82,84,85,86,88,90,92,95]
+      ]
+    }]
+  }
+}
+\`\`\``
+};
+
+function loadExample(type) {
+  document.getElementById('md-input').value = EXAMPLES[type];
+  // update active tab
+  document.querySelectorAll('#tabs button').forEach((b,i) => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === type ||
+      (type==='hist' && b.textContent==='Histogram') ||
+      (type==='box'  && b.textContent==='Box Plot') ||
+      (type==='scatter' && b.textContent==='Scatter'));
+  });
+  render();
+}
+
+// Load line chart on startup
+loadExample('line');
+</script>
+</body>
+</html>
