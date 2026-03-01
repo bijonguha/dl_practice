@@ -218,27 +218,46 @@ function buildScales(spec) {
 /**
  * Call this after loading marked.js in a browser or Node environment.
  *
+ * Supports both marked v4 (setOptions + Renderer) and marked v5+
+ * (use({ renderer }) with token-object signature).
+ *
  * Usage:
- *   import { setupMarked } from './renderer.js';
- *   setupMarked(marked);               // uses global marked
+ *   setupMarked(marked);
  *   const html = marked.parse(mdText);
  */
 function setupMarked(markedInstance) {
-  const renderer = new markedInstance.Renderer();
-  const originalCode = renderer.code.bind(renderer);
+  // marked v5+ exposes `use()` and passes a token object to renderer hooks.
+  // marked v4 uses `new Renderer()` + `setOptions()` with string arguments.
+  const isV5Plus = typeof markedInstance.use === 'function';
 
-  renderer.code = function (code, infoString, escaped) {
-    // infoString is the language tag, e.g. "chart:line"
-    const info = (infoString ?? '').trim();
-    if (info.startsWith('chart:')) {
-      const chartType = info.slice('chart:'.length).toLowerCase();
-      return renderChartBlock(chartType, code);
-    }
-    // Fall through to default code rendering (syntax highlight, etc.)
-    return originalCode(code, infoString, escaped);
-  };
-
-  markedInstance.setOptions({ renderer });
+  if (isV5Plus) {
+    markedInstance.use({
+      renderer: {
+        code(token) {
+          // token = { text, lang, escaped }
+          const info = (token.lang ?? '').trim();
+          if (info.startsWith('chart:')) {
+            const chartType = info.slice('chart:'.length).toLowerCase();
+            return renderChartBlock(chartType, token.text);
+          }
+          return false; // let marked use its default code renderer
+        },
+      },
+    });
+  } else {
+    // Fallback for marked v4
+    const renderer = new markedInstance.Renderer();
+    const originalCode = renderer.code.bind(renderer);
+    renderer.code = function (code, infoString, escaped) {
+      const info = (infoString ?? '').trim();
+      if (info.startsWith('chart:')) {
+        const chartType = info.slice('chart:'.length).toLowerCase();
+        return renderChartBlock(chartType, code);
+      }
+      return originalCode(code, infoString, escaped);
+    };
+    markedInstance.setOptions({ renderer });
+  }
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
